@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Message
-from app.schema import HistoryResponse
 from app.schema import HistoryItem, HistoryResponse
 
 router = APIRouter()
@@ -23,12 +22,12 @@ def get_history(
     messages.reverse()
 
     return HistoryResponse(
-         items=[
-             HistoryItem(
-               id=msg.id,
+        items=[
+            HistoryItem(
+                id=msg.id,
                 text=msg.text,
-               created_at=msg.created_at,
-             )
-             for msg in messages
-         ]
-      )
+                created_at=msg.created_at,
+            )
+            for msg in messages
+        ]
+    )

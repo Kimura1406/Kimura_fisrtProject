@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -10,19 +10,32 @@ from app.schema import (
     SumRequest,
     SumResponse,
 )
+from app.services.chat_service import ChatServiceError, generate_reply
 
 router = APIRouter()
+
 
 @router.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest, db: Session = Depends(get_db)):
     user_message = req.message.strip()
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    # mock trả lời (chưa dùng AI)
-    reply = f"Bạn vừa nói: {user_message}"
+    try:
+        reply = generate_reply(user_message)
+    except ChatServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Chat provider request failed.",
+        ) from exc
 
-    if user_message:
-        db.add(Message(text=user_message))
-        db.commit()
+    db.add(Message(text=user_message))
+    db.commit()
 
     return ChatResponse(reply=reply)
 
@@ -35,4 +48,4 @@ def sum_number(req: SumRequest):
 
 @router.get("/ping", response_model=PingResponse)
 def ping():
-    return PingResponse(status="Kimura đã check server nhận chat thành công")
+    return PingResponse(status="Kimura API is ready")
